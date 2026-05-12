@@ -19,6 +19,7 @@
   },
   "scripts": {
     "smoke": "node bin/audit-cli.js",
+    "proxy": "node bin/dev-proxy.js",
     "dev": "pear run --dev .",
     "stage": "pear stage current ."
   },

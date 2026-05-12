@@ -60,14 +60,23 @@ differs.
 
 ### Browser dev shell
 
-`ui/index.html` runs in any modern browser (HTTP fallback only, plus
-in-browser ed25519 verification). Useful for iterating on the UI
-without booting Pear runtime. Start with:
+`ui/index.html` runs in any modern browser. Useful for iterating on
+the UI without booting Pear runtime. Run the included dev proxy so
+the browser can talk to the cloud companion without tripping CORS:
 
 ```bash
-python3 -m http.server --directory ui 8765
-# http://localhost:8765/
+npm run proxy
+# → http://localhost:8766/
 ```
+
+The proxy:
+- serves `ui/*` as static files
+- forwards `/api/*` to the cloud companion, injecting `access-control-allow-origin: *`
+
+In the UI, leave the **Companion URL** field blank to use the same-origin
+proxy path (default). Click **Load events** → **Verify all events** to
+see the 4-of-4 green panel. No cloud egress is required from the
+browser; only the proxy talks to the companion.
 
 ### Known limitations (2026-05-12)
 

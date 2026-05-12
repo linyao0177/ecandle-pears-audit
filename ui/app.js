@@ -68,7 +68,13 @@ let verifyResults = []  // array of { ok, reason } parallel to events
 /* --- Data sources --- */
 
 async function fetchEventsViaHttp (companionUrl) {
-  const url = `${companionUrl.replace(/\/$/, '')}/api/hypercore-events`
+  /* Empty companion URL → same-origin call. Works with the dev proxy
+   * (`node bin/dev-proxy.js`) which serves the UI + transparently forwards
+   * /api/* to the cloud companion with a permissive
+   * access-control-allow-origin. Avoids the CORS-blocked path of
+   * fetching the Cloud Run companion directly from a browser. */
+  const base = (companionUrl || '').trim().replace(/\/$/, '')
+  const url = `${base}/api/hypercore-events`
   const res = await fetch(url, { signal: AbortSignal.timeout(10_000) })
   if (!res.ok) throw new Error(`http ${res.status} from ${url}`)
   const body = await res.json()
