@@ -1,0 +1,40 @@
+{
+  "name": "ecandle-pears-audit",
+  "version": "0.0.1",
+  "description": "Peer-to-peer audit viewer for eCandle DePIN device feeds — Hypercore + Hyperswarm replication, moving toward a Pear-native app.",
+  "type": "module",
+  "main": "src/feed-replicator.js",
+  "bin": {
+    "ecandle-audit": "bin/audit-cli.js"
+  },
+  "scripts": {
+    "smoke": "node bin/audit-cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "author": "linyao0177",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/linyao0177/ecandle-pears-audit"
+  },
+  "keywords": [
+    "ecandle",
+    "depin",
+    "audit",
+    "hypercore",
+    "hyperswarm",
+    "pear",
+    "holepunch",
+    "tether"
+  ],
+  "dependencies": {
+    "@noble/ed25519": "^3.1.0",
+    "b4a": "^1.6.6",
+    "corestore": "^7.0.0",
+    "hypercore": "^11.0.0",
+    "hyperswarm": "^4.7.0",
+    "random-access-memory": "^6.2.1"
+  }
+}
