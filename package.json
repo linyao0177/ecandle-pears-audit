@@ -1,14 +1,26 @@
 {
   "name": "ecandle-pears-audit",
-  "version": "0.0.1",
-  "description": "Peer-to-peer audit viewer for eCandle DePIN device feeds — Hypercore + Hyperswarm replication, moving toward a Pear-native app.",
+  "version": "0.0.2",
+  "description": "Peer-to-peer audit viewer for eCandle DePIN device feeds — Hypercore + Hyperswarm replication, Pear-runtime desktop app.",
   "type": "module",
-  "main": "src/feed-replicator.js",
+  "pear": {
+    "name": "ecandle-pears-audit",
+    "type": "desktop",
+    "pre": "pear-electron/pre",
+    "gui": {
+      "main": "ui/index.html",
+      "backgroundColor": "#0a0a0a",
+      "width": 980,
+      "height": 760
+    }
+  },
   "bin": {
     "ecandle-audit": "bin/audit-cli.js"
   },
   "scripts": {
-    "smoke": "node bin/audit-cli.js"
+    "smoke": "node bin/audit-cli.js",
+    "dev": "pear run --dev .",
+    "stage": "pear stage current ."
   },
   "engines": {
     "node": ">=20"
@@ -35,6 +47,11 @@
     "corestore": "^7.0.0",
     "hypercore": "^11.0.0",
     "hyperswarm": "^4.7.0",
+    "pear-bridge": "^1.2.5",
+    "pear-electron": "^1.7.28",
     "random-access-memory": "^6.2.1"
+  },
+  "devDependencies": {
+    "pear": "^2.0.1"
   }
 }

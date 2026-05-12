@@ -17,10 +17,34 @@ platform and complements the web-based audit viewer at
 
 ## Status
 
-**v0.0.1 — Week 1 scaffold (CLI smoke test).**
+**v0.0.2 — Pear desktop app integration (Week 2 progress).**
 
-The CLI is a stepping stone to a full [Pear](https://docs.pears.com)
-app. Today it runs as a Node script with two modes:
+The project is now a real [Pear](https://docs.pears.com) desktop app
+on the v2 migration path (`pear-electron` + `pear-bridge` from the
+official migration guide). It also still runs as a CLI for headless
+audit and as a static-served browser page for development.
+
+### Pear app
+
+Linked at:
+```
+pear://ymxurfopbfhf8or5jfzywoxwqhh7qy3ta8zgc886somjnsn1g7gy
+```
+
+Boot wiring is in `index.js` per the v2 pattern; `package.json` has
+`pear.pre = "pear-electron/pre"` plus `pear.gui.main = "ui/index.html"`.
+`pear stage` succeeds and pushes the GUI bundle to the link.
+`pear run --dev .` configures correctly (Pre-run pear-electron/pre ✓)
+but does not yet spawn an Electron window on this machine — this is a
+known Pear v1→v2 transitional gap (`pear run` itself is deprecated in
+favor of the `pear-runtime` module, but the documented module-based
+launch path is incomplete in current docs). When that resolves, the
+window will open the existing `ui/index.html`, where the UI detects
+`globalThis.Pear` and automatically enables Hyperswarm-P2P mode.
+
+### CLI
+
+Two transport modes for the same verification logic:
 
 1. **Hyperswarm mode** (default) — joins the Hyperswarm DHT, replicates
    the Hypercore feed directly from any peer holding it, verifies each
@@ -34,19 +58,38 @@ app. Today it runs as a Node script with two modes:
 Verification logic is identical in both modes; only event transport
 differs.
 
-### Known limitation (2026-05-12)
+### Browser dev shell
 
-The current eCandle production Hypercore writer runs on Cloud Run,
-which doesn't accept inbound UDP, so Hyperswarm peer connections never
-establish. **Today, run with `--via http` against the production
-companion.** The Hyperswarm path is fully implemented and will work
-unchanged once the producer is migrated to a host with normal
-networking (GCP VPS, Pear-runtime host, etc.). Migration is tracked
-in the upstream
-[migration plan](https://github.com/linyao0177/ecandle/blob/main/docs/pears-audit-viewer-migration-plan.md).
+`ui/index.html` runs in any modern browser (HTTP fallback only, plus
+in-browser ed25519 verification). Useful for iterating on the UI
+without booting Pear runtime. Start with:
 
-Next versions add a Pear app shell with a desktop UI, installable via
-`pear run pear://<key>`, with no web server in the trust path.
+```bash
+python3 -m http.server --directory ui 8765
+# http://localhost:8765/
+```
+
+### Known limitations (2026-05-12)
+
+**Producer side (Cloud Run UDP block).** The current eCandle production
+Hypercore writer runs on Cloud Run, which doesn't accept inbound UDP,
+so Hyperswarm peer connections never establish. Today, run with
+`--via http` against the production companion. The Hyperswarm path is
+fully implemented and will work unchanged once the producer is
+migrated to a host with normal networking (GCP VPS, Pear-runtime host,
+etc.). Migration is tracked in the upstream
+[migration plan](https://github.com/linyao0177/ecandle/blob/main/docs/pears-audit-viewer-migration-plan.md)
+and the [Week 1 retrospective](https://github.com/linyao0177/ecandle/blob/main/docs/pears-audit-week1-retrospective-2026-05-12.md).
+
+**Consumer side (Pear v1→v2 transition).** `pear run` is deprecated;
+the canonical v2 launch path uses `pear-runtime` (or equivalent
+shipped command for `pear-electron` apps) but that path is still
+firming up in upstream docs. Code wiring on our side is complete:
+`index.js` uses `pear-electron`'s `Runtime` + `pear-bridge`'s
+`Bridge` per the v2 migration guide; `pear stage` runs cleanly and
+publishes to a `pear://` link. Once Holepunch ships a clean v2 launch
+command (or `pear run` is re-enabled for v2 apps), the existing
+window+UI will boot without further code changes.
 
 ## Requirements
 

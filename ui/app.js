@@ -11,7 +11,15 @@
  * "data source" is pluggable — today HTTP, tomorrow Bare-side Hypercore.
  */
 
-import * as ed from 'https://esm.sh/@noble/ed25519@3.1.0'
+/* Pear runtime resolves bare specifiers from node_modules (Bare runtime
+ * supports the Node module resolution algorithm). Plain browsers do not —
+ * for stock-browser dev, point the import map at a CDN fallback. */
+let ed
+if (typeof globalThis.Pear !== 'undefined') {
+  ed = await import('@noble/ed25519')
+} else {
+  ed = await import('https://esm.sh/@noble/ed25519@3.1.0')
+}
 
 /* Schema check — same logic as src/decoder.js but inlined so this file
  * is self-contained for browser loading. */
@@ -43,6 +51,7 @@ const $ = id => document.getElementById(id)
 const modeSelect = $('modeSelect')
 const devicePubkeyInput = $('devicePubkeyInput')
 const companionUrlInput = $('companionUrlInput')
+const feedKeyInput = $('feedKeyInput')
 const loadButton = $('loadButton')
 const verifyButton = $('verifyButton')
 const eventsList = $('eventsList')
@@ -50,6 +59,7 @@ const eventsHeading = $('eventsHeading')
 const verifySummary = $('verifySummary')
 const modeIndicator = $('modeIndicator')
 const connIndicator = $('connIndicator')
+const runtimeBadge = $('runtimeBadge')
 
 /* State */
 let events = []
@@ -66,15 +76,66 @@ async function fetchEventsViaHttp (companionUrl) {
   return body.events
 }
 
-/* Pear-runtime placeholder. When this UI loads inside Pear, the peer
- * process will expose an IPC handle on globalThis.pearAudit; we delegate
- * data fetching to it. For now this throws — UI users see a helpful
- * message until the Pear shell lands. */
-async function fetchEventsViaPear () {
-  if (typeof globalThis.pearAudit?.getEvents !== 'function') {
-    throw new Error('Hyperswarm/Pear mode is only available inside the Pear app — run via `pear run pear://<key>` once published')
+/* Real Hyperswarm replication path, runs inside Pear's Bare runtime.
+ *
+ * Bare resolves bare specifiers from node_modules using the Node
+ * resolution algorithm, so `import 'hypercore'` works the same way it
+ * does in Node. In a stock browser the dynamic import below will throw
+ * (no module resolution → "Failed to resolve module specifier"); the
+ * caller handles that gracefully. */
+let pearReplicator = null
+
+async function fetchEventsViaPear (feedKeyHex, opts = {}) {
+  if (!isInPearRuntime()) {
+    throw new Error('Hyperswarm mode requires the Pear runtime. Launch this app with `pear run --dev .` (development) or `pear run pear://<key>` (once published).')
   }
-  return globalThis.pearAudit.getEvents()
+  if (!/^[0-9a-fA-F]{64}$/.test(feedKeyHex)) {
+    throw new Error('--feed-key must be 64 hex chars (32 bytes)')
+  }
+
+  const [{ default: Hypercore }, { default: Hyperswarm }, { default: b4a }] = await Promise.all([
+    import('hypercore'),
+    import('hyperswarm'),
+    import('b4a'),
+  ])
+
+  /* Pear apps get a per-app storage directory at Pear.config.storage.
+   * Persisting the Hypercore across launches gives the auditor a
+   * permanent record without the producer being online. */
+  const storage = (globalThis.Pear?.config?.storage || '.') + '/audit-feed'
+  const feedKey = b4a.from(hexToBytes(feedKeyHex))
+
+  const core = new Hypercore(storage, feedKey)
+  await core.ready()
+
+  const swarm = new Hyperswarm()
+  swarm.on('connection', (conn) => core.replicate(conn))
+  const discovery = swarm.join(core.discoveryKey, { server: false, client: true })
+  await discovery.flushed()
+
+  const deadline = Date.now() + (opts.timeoutMs ?? 20_000)
+  while (core.length === 0 && Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 250))
+  }
+
+  const events = []
+  for (let i = 0; i < core.length; i++) {
+    const raw = await core.get(i)
+    /* core was opened without valueEncoding so we get raw buffers;
+     * parse JSON like the producer wrote it. */
+    try {
+      events.push(typeof raw === 'object' && !b4a.isBuffer(raw)
+        ? raw
+        : JSON.parse(b4a.toString(raw, 'utf8')))
+    } catch { /* drop malformed entries */ }
+  }
+
+  pearReplicator = { core, swarm, async stop () { await swarm.destroy(); await core.close() } }
+  return events
+}
+
+function isInPearRuntime () {
+  return typeof globalThis.Pear !== 'undefined'
 }
 
 /* --- UI helpers --- */
@@ -166,7 +227,7 @@ async function onLoad () {
     if (mode === 'http') {
       events = await fetchEventsViaHttp(companionUrlInput.value)
     } else {
-      events = await fetchEventsViaPear()
+      events = await fetchEventsViaPear(feedKeyInput.value)
     }
     verifyResults = new Array(events.length).fill(null)
     renderEvents()
@@ -233,5 +294,25 @@ async function onVerify () {
 loadButton.addEventListener('click', onLoad)
 verifyButton.addEventListener('click', onVerify)
 modeSelect.addEventListener('change', () => setMode(modeSelect.value))
+
+/* Pear runtime detection — light up the Hyperswarm option + badge */
+if (isInPearRuntime()) {
+  /* Enable hyperswarm option */
+  const hsOpt = modeSelect.querySelector('option[value="hyperswarm"]')
+  if (hsOpt) {
+    hsOpt.disabled = false
+    hsOpt.textContent = 'Hyperswarm P2P (Pear runtime detected ✓)'
+  }
+  modeSelect.value = 'hyperswarm'
+  if (runtimeBadge) {
+    runtimeBadge.textContent = '🍐 Pear runtime'
+    runtimeBadge.classList.remove('dim')
+    runtimeBadge.classList.add('ok')
+  }
+} else if (runtimeBadge) {
+  runtimeBadge.textContent = 'browser (no Pear)'
+  runtimeBadge.classList.add('dim')
+}
+
 setMode(modeSelect.value)
 setConn('idle', 'dim')
