@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>eCandle — Independent Audit</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header>
+    <div class="title">
+      <span class="logo">⚡</span>
+      <div>
+        <h1>eCandle · Independent Audit</h1>
+        <p class="subtitle">Verify every payment without trusting any company server</p>
+      </div>
+    </div>
+    <div class="status">
+      <span id="modeIndicator" class="badge">—</span>
+      <span id="connIndicator" class="badge dim">offline</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>How this works</h2>
+      <p class="muted">
+        Every payment generates an ed25519 signature on the device, appended
+        to a Hypercore append-only feed. This audit page replicates the
+        feed locally and verifies every signature against the device's
+        ed25519 public key. The cryptographic chain holds even if every
+        eCandle / Tether / Arkreen server goes dark.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Configuration</h2>
+      <div class="config">
+        <label>
+          <span>Mode</span>
+          <select id="modeSelect">
+            <option value="http" selected>HTTP fallback (works against Cloud Run)</option>
+            <option value="hyperswarm" disabled>Hyperswarm P2P (Pear runtime only)</option>
+          </select>
+        </label>
+        <label>
+          <span>Device pubkey (64 hex)</span>
+          <input id="devicePubkeyInput" value="3a5d47d07b26850887466e85512efdef0fc63272a813643cc80d4bd0a4e6b1e0" />
+        </label>
+        <label>
+          <span>Companion URL (HTTP mode)</span>
+          <input id="companionUrlInput" value="https://ecandle-companion-487249444915.asia-east1.run.app" />
+        </label>
+      </div>
+      <div class="actions">
+        <button id="loadButton">▶ Load events</button>
+        <button id="verifyButton" disabled>✓ Verify all events</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="row-between">
+        <h2 id="eventsHeading">Cloud feed events (0)</h2>
+        <span id="verifySummary" class="muted small"></span>
+      </div>
+      <ul id="eventsList" class="events">
+        <li class="muted small">No events loaded. Click "Load events" above.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <p class="muted small">
+      Open-source verifier: <code>scripts/audit-verify.mjs</code> in
+      <a href="https://github.com/linyao0177/ecandle-pears-audit">linyao0177/ecandle-pears-audit</a>.
+      Same logic, runs on any laptop, no eCandle servers in the trust path.
+    </p>
+  </footer>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
